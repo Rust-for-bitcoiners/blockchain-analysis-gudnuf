@@ -104,22 +104,13 @@ fn get_block_time(block_height: u64) -> Result<Duration> {
  * Attempts to find average block time of recent blocks
  */
 fn avg_time_to_mine(block_height: u64) -> Result<Duration> {
-    // infeasable to use this because querying takes too long
-    // should probably caluclate based on difficulty
     let num_blocks_in_epoch = block_height % 2016;
 
-    let mut timestamps = Vec::new();
-    for i in block_height - 10..block_height {
-        let block = get_block_by_height(i)?;
-        timestamps.push(block.header.time);
-    }
+    let first_block_in_epoch = block_height - num_blocks_in_epoch;
 
-    let mut total_diff = 0;
-    for i in 1..timestamps.len() {
-        total_diff += timestamps[i] - timestamps[i - 1];
-    }
+    let total_diff = get_block_time(block_height)? - get_block_time(first_block_in_epoch)?;
 
-    let avg_diff = total_diff / (timestamps.len() as u32);
+    let avg_diff = total_diff.num_seconds() as u64 / num_blocks_in_epoch;
 
     Ok(Duration::seconds(avg_diff as i64))
 }
@@ -202,7 +193,12 @@ fn call_command(command: Commands) -> std::result::Result<(), Box<dyn Error>> {
         Commands::NextBlock => {
             println!("Next block will be mined in: ");
             let time = guess_time_to_mine_next_block()?;
-            println!("{}s, {}min", time.num_seconds(), time.num_minutes());
+            println!(
+                "{}s, {}min, {}days",
+                time.num_seconds(),
+                time.num_minutes(),
+                time.num_days()
+            );
         }
     };
     Ok(())
